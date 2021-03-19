@@ -1,0 +1,232 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>Wiznet Bot Search</title>
+
+<style type="text/css">
+
+body
+{
+	font-family:Verdana, Geneva, sans-serif;
+	padding-bottom:40px;
+}
+
+.section
+{
+	border-top: 1px solid #999;
+	margin-top: 35px;
+}
+
+h3
+{
+	text-decoration:underline;
+}
+
+.info p
+{
+	margin: 0 0 7px 0;
+}
+
+.config
+{
+	
+}
+
+.config > p
+{
+	font-family: monospace;
+}
+
+.config .block .desc
+{
+}
+
+.config .block .example
+{
+	font-size:.8em;
+}
+
+.config .block
+{
+	padding-left:6px;
+	border-left:4px solid #666;
+}
+
+.usage table
+{
+}
+
+.usage table tbody
+{
+	font-family: monospace;
+}
+
+.usage table thead th
+{
+	text-align:left;
+}
+
+.cmdo
+{
+	font-family: monospace;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<h1>Wiznet Bot Search</h1>
+<hr />
+
+<div class="contents">
+ <h2>Table of Contents</h2>
+ <ul>
+  <li><a href="#program-info">1 Program info</a>
+  <ul>
+   <li><a href="#description">1.1 Description</a></li>
+  </ul>
+  <li>2 Options
+  <ul>
+   <li><a href="#config-file-options">2.1 Configuration file options</a></li>
+   <li><a href="#command-line-options">2.2 Command line options</a></li>
+  </ul>
+  <li><a href="#usage">3 Usage</a></li>
+ </ul>
+</div>
+
+
+<div class="section">
+ <a name="program-info"></a>
+ <h3>1 Program info</h3>
+ <div class="info">
+  <p>Version 1.0</p>
+  <p>Copyright &copy; <a href="http://www.wiznet.gr/">Wiznet</a> 2012</p>
+  <p>Developed by <a href="mailto: christos.lytras@gmail.com">Christos Lytras</a></p>
+  <p>Developed on Debian GNU/Linux 6.0</p>
+  <p>Compliled and linked with gcc version 4.4.5 (Debian 4.4.5-8)</p>
+ </div>
+</div>
+
+<div class="section">
+ <a name="description"></a>
+ <h3>1.1 Description</h3>
+ <div class="desc">
+  <p>The program is designed to search files for specific text blocks. It uses a config file for its search option, that allows users and/or administrators (from now on addressed just as admins) to have multiple config files with different definitions to search for. The main goal is to search for PHP, Javascript, Perl bot malicious scripts, but other than that, it can be used as a simple text finder (not regular expressions support yet).</p>
+
+  <p>The configuration file supports a structured options block that allows multiple options like what files to search for by using wildcard text expressions list and what to search for by a text list.</p>
+ 
+  <p>The program uses <a href="http://www.hyperrealm.com/libconfig/">libconfig</a> to read/write configuration files and you can find the options syntax <a href="http://www.hyperrealm.com/libconfig/libconfig_manual.html#Configuration-Files">here</a>.</p>
+ </div>
+</div>
+
+<div class="section">
+ <a name="config-file-options"></a>
+ <h3>2.1 Configuration file options</h3>
+ <div class="config">
+  <p class="opt">wizbosa.keywords</p>
+  <div class="block">
+   <p class="desc">Text list that defines which text blocks to search for.</p>
+   <p class="example">Example:</p>
+   <pre>
+wizbosa = {
+ keywords = [
+  "preg_replace",
+  "setcookie(",
+  ...
+ ];
+   </pre>
+  </div>
+
+  <p class="opt">wizbosa.files_filter</p>
+  <div class="block">
+   <p class="desc">Text list with wildcard expressions that defines which files to be searched.</p>
+   <p class="example">Example:</p>
+   <pre>
+wizbosa = {
+ files_filter = [
+  "*.php",
+  "*.js",
+  ...
+ ];
+   </pre>
+  </div>
+
+  <p class="opt">wizbosa.search_directory</p>
+  <div class="block">
+   <p class="desc">The directory with the files/subdirectories to be searched.</p>
+   <p class="example">Example:</p>
+   <pre>
+wizbosa = {
+ search_directory = "*.php";
+   </pre>
+  </div>
+
+  <p class="opt">wizbosa.recurse_subdirectories</p>
+  <div class="block">
+   <p class="desc">Flag option which tells to recurse (follow) and search subdirectories contained inside search_directory.</p>
+   <p class="example">Example:</p>
+   <pre>
+wizbosa = {
+ recurse_subdirectories = true;
+   </pre>
+  </div>
+ 
+  <p class="opt">wizbosa.use_files_filter</p>
+  <div class="block">
+   <p class="desc">Flag option which tells if the program shall use files_filter list to filter filenames or to search all the files.</p>
+   <p class="example">Example:</p>
+   <pre>
+wizbosa = {
+ use_files_filter = true;
+   </pre>
+  </div>
+ 
+  <p class="opt">wizbosa.ignore_files_over</p>
+  <div class="block">
+   <p class="desc">Text representation of the maximum file size that the program shall open for searching.</p>
+   <p class="example">Example:</p>
+   <pre>
+wizbosa = {
+ ignore_files_over = "5MB";
+   </pre>
+  </div>
+
+ </div>
+</div>
+
+<div class="section">
+ <a name="command-line-options"></a>
+ <h3>2.2 Command line options</h3>
+ <div class="usage">
+  <table border="1" cellpadding="4" cellspacing="0">
+   <thead>
+    <tr>
+     <th>Option</th><th>Description</th>
+    </tr>
+   </thead>
+   <tbody>
+    <tr><td>-s, --start</td><td>Start searching</td></tr>
+    <tr><td>-c &lt;file&gt;, --config &lt;file&gt;</td><td>Specify a config file (wizbosa.cfg will be used is no file is specified)</td></tr>
+    <tr><td>-ncc, --no-config-confirm</td><td>No config file confirmation</td></tr>
+    <tr><td>-p &lt;path&gt;, --path &lt;path&gt;</td><td>Specify the path to search (overrides config file path)</td></tr>
+    <tr><td>-h, --help</td><td>Show help</td></tr>
+   </tbody>
+  </table>
+ </div>
+</div>
+
+<div class="section">
+ <a name="usage"></a>
+ <h3>3 Usage</h3>
+ <div class="cmdo">
+  <p>./wizbosa [OPTIONS]</p>
+  <p>./wizbosa -s -c malic_bots.cfg</p>
+ </div>
+</div>
+
+
+</body>
+</html>
