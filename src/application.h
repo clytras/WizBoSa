@@ -61,6 +61,7 @@ namespace wizbosa
     bool m_bShowHelp;
     bool m_bStart;
     bool m_bNoConfigConfirm;
+    bool m_bNoPrintIgnored;
 
     bool m_bHasArgMoveInfected;
     bool m_bArgMoveInfected;

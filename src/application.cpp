@@ -24,18 +24,19 @@ using namespace wiznet;
 namespace wizbosa
 {
   Wizbosa::Wizbosa() :
-      //m_sConfigFile(""),
-      m_bHasArgSearchDir(false),
-      //m_sArgSearchDir("."),
-      m_bHasArgRecurseSubdirs(false),
-      m_bArgRecurseSubdirs(false),
-      m_bHasArgConfigFile(false),
-      m_bShowHelp(false),
-      m_bStart(false),
-      m_bNoConfigConfirm(false),
-      m_bMoveInfected(false),
-      m_bMoveCreateTree(false),
-      m_bHasArgMoveInfected(false)
+    //m_sConfigFile(""),
+    m_bHasArgSearchDir(false),
+    //m_sArgSearchDir("."),
+    m_bHasArgRecurseSubdirs(false),
+    m_bArgRecurseSubdirs(false),
+    m_bHasArgConfigFile(false),
+    m_bShowHelp(false),
+    m_bStart(false),
+    m_bNoConfigConfirm(false),
+    m_bNoPrintIgnored(false),
+    m_bMoveInfected(false),
+    m_bMoveCreateTree(false),
+    m_bHasArgMoveInfected(false)
   {
     m_sArgSearchDir = ".";
     m_sConfigFile = "";
@@ -53,10 +54,9 @@ namespace wizbosa
     //char *prealpath = realpath(m_bHasArgRecurseSubdirs ? m_sArgSearchDir : config.GetSearchDir());
     m_sRealPathSearch = m_bHasArgSearchDir ? m_sArgSearchDir : config.GetSearchDir();
 
-    if(futils::exists(m_sRealPathSearch))
+    if (futils::exists(m_sRealPathSearch))
       m_sRealPathSearch = futils::real_path(m_sRealPathSearch);
-    else
-    {
+    else {
       cerr << "Search directory \"" << m_sRealPathSearch << "\" not found.\n";
       return false;
     }
@@ -65,17 +65,12 @@ namespace wizbosa
     m_sMoveToPath = config.GetMoveToPath();
     m_bMoveCreateTree = config.GetMoveCreateTree();
 
-    if(m_bMoveInfected && m_sMoveToPath.length() > 0)
-    {
-      if(futils::exists(m_sMoveToPath))
-      {
+    if (m_bMoveInfected && m_sMoveToPath.length() > 0) {
+      if (futils::exists(m_sMoveToPath)) {
         m_sMoveToPath = futils::real_path(m_sMoveToPath);
         m_bMoveInfected = true;
-      }
-      else
-      {
-        if(futils::mkpath(m_sMoveToPath, 0755) != 0)
-        {
+      } else {
+        if (futils::mkpath(m_sMoveToPath, 0755) != 0) {
           cerr << "Failed to create move to directory \"" << m_sMoveToPath << "\".\nAborting search.\n";
           return false;
         }
@@ -89,8 +84,7 @@ namespace wizbosa
 
     cout << endl;
 
-    if(m_bStart)
-    {
+    if (m_bStart) {
       cout << "Begin searching path: " << m_sRealPathSearch << endl << endl;
 
       m_ctTimeBegin = clock();
@@ -102,9 +96,7 @@ namespace wizbosa
       PrintSummary();
       PrintTotalTime();
       sendAlert();
-    }
-    else
-    {
+    } else {
       cout << "Apply -s parameter to start search process.\n";
     }
 
@@ -113,11 +105,14 @@ namespace wizbosa
 
   void Wizbosa::PrintCmdOptsOverrides()
   {
-    if(m_bHasArgSearchDir)
+    if (m_bHasArgSearchDir)
       cout << endl << "Override option for search directory: \"" << m_sArgSearchDir << "\"" << endl;
 
-    if(m_bHasArgMoveInfected)
+    if (m_bHasArgMoveInfected)
       cout << endl << "Override option for move infected files: " << sutils::YesNo(m_bArgMoveInfected) << endl;
+  
+    if (m_bNoPrintIgnored)
+      cout << endl << "Override option for print ignored files: " << sutils::YesNo(m_bNoPrintIgnored) << endl;
   }
 
   void Wizbosa::PrintAbort()
@@ -128,7 +123,7 @@ namespace wizbosa
   bool Wizbosa::ConfigConfirm()
   {
 
-    if(m_bNoConfigConfirm || !m_bStart)
+    if (m_bNoConfigConfirm || !m_bStart)
       return true;
 
     char c;
@@ -136,16 +131,14 @@ namespace wizbosa
 
     cout << endl << "Are you sure you want to begin the search process with the above options? [Y/n]";
 
-    for(;;)
-    {
+    for (;;) {
       c = console::getch();
 
-      if(tolower(c) == 'y')
-      {
+      if (tolower(c) == 'y') {
         result = true;
         break;
       }
-      else if(tolower(c) == 'n' || int(c) == 27)
+      else if (tolower(c) == 'n' || int(c) == 27)
         break;
     }
 
@@ -155,10 +148,10 @@ namespace wizbosa
 
   bool Wizbosa::sendAlert()
   {
-    if(config.GetSendAlert())
-    {
+    if (config.GetSendAlert()) {
       return nutils::sendmail(config.GetAlertMailTo().c_str(), config.GetAlertMailFrom().c_str(), config.GetAlertMailSubject().c_str(), m_sOut.c_str()) == 0;
     }
+    return false;
   }
 
   void Wizbosa::resetCounters()
@@ -173,24 +166,33 @@ namespace wizbosa
 
   void Wizbosa::printFileFound(string file, int matches, vector<int> pos)
   {
+    vector<string>& kw = config.GetKeywords();
     string smatches(matches > 1 ? " matches" : " match");
     std::ostringstream sout;
     std::ostringstream snfout;
-    sout << console::fore::lightwhite << "("
-       << console::fore::red << ">"
-       << console::fore::lightwhite << ")"
-       << console::reset << ": "
-       << file
-       << " ["
-       << console::fore::cyan
-       << matches << smatches
-       << console::reset
-       << "] ("
-       << console::fore::green
-       << "line "
-       << (pos[1] + 1)
-       << console::reset
-       << ")" << endl;
+    sout  << console::fore::lightwhite << "("
+          << console::fore::red << ">"
+          << console::fore::lightwhite << ")"
+          << console::reset << ": "
+          << file
+          << " ["
+          << console::fore::cyan
+          << matches << smatches
+          << console::reset
+          << "] ("
+          << console::fore::green
+          << "line "
+          << (pos[1] + 1)
+          << console::reset
+          << ")"
+          << endl
+          << "     "
+          << console::fore::red
+          << (pos[1] + 1)
+          << console::reset
+          << ": "
+          << kw[pos[2]]
+          << endl;
 
     snfout << "(>): " << file << " [" << matches << smatches << "] (line " << (pos[1] + 1) << ")" << endl;
 
@@ -204,9 +206,9 @@ namespace wizbosa
     std::ostringstream snfout;
 
     sout << (isMoved ? console::fore::cyan : console::fore::yellow)
-       << (isMoved ? "     moved: " : " move fail: ")
-       << (isMoved ? console::fore::green : console::fore::red)
-       << m_sLastMovedfilePath << console::reset << endl;
+         << (isMoved ? "     moved: " : " move fail: ")
+         << (isMoved ? console::fore::green : console::fore::red)
+         << m_sLastMovedfilePath << console::reset << endl;
 
     snfout << (isMoved ? "     moved: " : " move fail: ") << m_sLastMovedfilePath << endl;
 
@@ -226,8 +228,7 @@ namespace wizbosa
     //cout << "m_sMoveToPath: " << m_sMoveToPath << endl;
     //cout << "MoveInfectedFile with '" << file << "'" << endl;
 
-    if(m_bMoveCreateTree)
-    {
+    if (m_bMoveCreateTree) {
       //cout << "--move-create-dirtree" << endl;
 
 
@@ -238,13 +239,10 @@ namespace wizbosa
 
       //futils::mkpath(string(futils::dirname(m_sLastMovedfilePath.c_str())), (mode_t)0755);
       futils::mkpath(destdir, (mode_t)0755);
-    }
-    else
-    {
+    } else {
       int i = 0;
       m_sLastMovedfilePath = m_sMoveToPath + futils::basename(file.c_str());
-      while(futils::exists(m_sLastMovedfilePath))
-      {
+      while (futils::exists(m_sLastMovedfilePath)) {
         m_sLastMovedfilePath =  m_sMoveToPath + futils::basename(file.c_str());
         m_sLastMovedfilePath += "." + sutils::to_string(++i);
       }
@@ -267,64 +265,52 @@ namespace wizbosa
     {
       m_iDirsSearched++;
 
-      while((bWorking = find.FindNextFile()))
-      {
-        if(!find.IsDots())
-        {
-          if(find.IsDirectory() && config.GetRecurseSubdirectories())
-          {
+      while ((bWorking = find.FindNextFile())) {
+        if (!find.IsDots()) {
+          if (find.IsDirectory() && config.GetRecurseSubdirectories()) {
             searchDir(find.GetFilePath());
           }
-          else if(find.IsFile())
-          {
+          else if (find.IsFile()) {
             vector<string>& ff = config.GetFilesFilter();
             unsigned int iff;
             bool bProcessFile;
 
-            for(iff = 0; iff < ff.size(); iff++)
-            {
-              if(ff[iff].compare("!ext") == 0)
-              {
+            for (iff = 0; iff < ff.size(); iff++) {
+              if (ff[iff].compare("!ext") == 0) {
                 bProcessFile = find.GetFileName().find(".") == string::npos;
-              }
-              else
-              {
+              } else {
                 bProcessFile = find.CompareFileName(ff[iff]);
               }
 
               //if(find.CompareFileName(ff[iff]))
-              if(bProcessFile) 
-              {
+              if (bProcessFile)  {
                 //cout << "Found file(" << ff[iff] << "): " << find.GetFilePath() << endl;
                 vector<int> positions;
                 int matches = searchFile(find.GetFilePath(), positions);
 
-                if(matches > 0)
-                {
+                if (matches > 0) {
                   //cout << "Found file with matches(" << matches << "): " << find.GetFilePath() << endl;
                   printFileFound(find.GetFilePath(), matches, positions);
                   m_iFilesWithMatches++;
 
-                  if(m_bMoveInfected)
-                  {
-                    if(MoveInfectedFile(find.GetFilePath()))
-                    {
+                  if (m_bMoveInfected) {
+                    if (MoveInfectedFile(find.GetFilePath())) {
                       printFileMoved(true);
                       m_iFilesMoved++;
-                    }
-                    else
-                    {
+                    } else {
                       printFileMoved(false);
                     }
                   }
                 }
-                else if(matches == FSRCH_SIZELIMITIGNORE)
-                {
-                  cout << "Ignoring big file: " << find.GetFilePath() << endl;
+                else if (matches == FSRCH_SIZELIMITIGNORE) {
+                  bool bPrintIgnored = m_bNoPrintIgnored ? !m_bNoPrintIgnored : config.GetPrintIgnoredFiles();
+                  if (bPrintIgnored) {
+                    cout << "Ignoring big file: " << find.GetFilePath() << endl;
+                  }
                   m_iFilesIgnoredSizeLimit++;
                 }
 
-                if(matches >= 0) m_iFilesSearched++;
+                if (matches >= 0) m_iFilesSearched++;
               }
             }
           }
@@ -345,24 +331,22 @@ namespace wizbosa
     ifs.seekg(0, ios::end);
     size_t size = ifs.tellg();
 
-    if(size <= config.GetIgnoreFilesOver())
-    {
+    if (size <= config.GetIgnoreFilesOver()) {
       string buffer(size, '\0');
 
       ifs.seekg(0);
       ifs.read(&buffer[0], size);
       ifs.close();
 
-      for(unsigned int i=0; i<kw.size(); i++)
-      {
+      for (unsigned int i = 0; i < kw.size(); i++) {
         found = buffer.find(kw[i]);
-        if(found != string::npos)
-        {
+        if (found != string::npos) {
           positions.push_back(static_cast<int>(found));
           //std::vector<int> bufvect (buffer, buffer[found]);
           //size_t n = std::count(bufvect.begin(), bufvect.end(), '\n');
-          size_t n = std::count(buffer.begin(), buffer.begin()+found, '\n');
+          size_t n = std::count(buffer.begin(), buffer.begin() + found, '\n');
           positions.push_back(static_cast<int>(n));
+          positions.push_back(static_cast<int>(i));
           result++;
         }
       }
@@ -391,9 +375,9 @@ namespace wizbosa
 
     std::ostringstream sout;
     sout << "Files searched: " << m_iFilesSearched << endl
-       << "Directories parsed: " << m_iDirsSearched << endl
-       << "Files with matches: " << m_iFilesWithMatches << endl
-       << "Files ignored due to size limit: " << m_iFilesIgnoredSizeLimit << endl;
+         << "Directories parsed: " << m_iDirsSearched << endl
+         << "Files with matches: " << m_iFilesWithMatches << endl
+         << "Files ignored due to size limit: " << m_iFilesIgnoredSizeLimit << endl;
 
 
     if(m_bMoveInfected)
@@ -415,20 +399,19 @@ namespace wizbosa
     int ts = static_cast<int>(floor(cs));
     std::ostringstream sout;
 
-    if(ts > 0)
-    {
-      int days = ts / 60 / 60 / 24,
-        secs = ts % 60,
-        mins = (ts / 60) % 60,
-        hours = (ts / 60 / 60) % 24;
+    if (ts > 0) {
+      int days = ts / 60 / 60 / 24;
+      int secs = ts % 60;
+      int mins = (ts / 60) % 60;
+      int hours = (ts / 60 / 60) % 24;
       float msecs = secs + static_cast<float>(cs - ts);
 
       sout << "Search finished after ";
 
-      if(days > 0) sout << days << " day(s) ";
-      if(hours > 0) sout << hours << " hour(s) ";
-      if(mins > 0) sout << mins << " minute(s) ";
-      if(msecs > 0) sout << msecs << " second(s) ";
+      if (days > 0) sout << days << " day(s) ";
+      if (hours > 0) sout << hours << " hour(s) ";
+      if (mins > 0) sout << mins << " minute(s) ";
+      if (msecs > 0) sout << msecs << " second(s) ";
       //if(msecs > 0) sout << msecs << " milisecods ";
 
       sout << endl;
@@ -451,9 +434,6 @@ namespace wizbosa
     cout << "  --move-create-dirtree\t\tCreate base directory tree for infected files on move destination directory\n";
     cout << "  -nmvi, -no-move-infected\tDo not move infected files found\n";
     cout << "  -mv, --moveto\tMove infected files to directory\n";
-
-
-
     cout << "  -h, --help\t\t\tShow help\n\n";
   }
 
@@ -465,67 +445,68 @@ namespace wizbosa
 //			cout << "Arg " << i << ": \"" << argv[i] << "\"\n";
 
     int i=0;
-    while(i < argc)
-    {
-      if(strcmp(argv[i], "-c") == 0 ||
-         strcmp(argv[i], "--config") == 0)
+    while (i < argc) {
+      if (strcmp(argv[i], "-c") == 0 ||
+          strcmp(argv[i], "--config") == 0)
       {
         m_bHasArgConfigFile = true;
         m_sConfigFile = argv[++i];
       }
-      else if(strcmp(argv[i], "-p") == 0 ||
-          strcmp(argv[i], "--path") == 0)
+      else if (strcmp(argv[i], "-p") == 0 ||
+               strcmp(argv[i], "--path") == 0)
       {
         m_bHasArgSearchDir = true;
 
-        if(++i < argc)
+        if (++i < argc)
           m_sArgSearchDir = argv[i];
-        else
-        {
+        else {
           cerr << "Option -p must be followed by a valid path.\nAborting search.\n";
           return false;
         }
       }
-      else if(strcmp(argv[i], "-h") == 0 ||
-          strcmp(argv[i], "--help") == 0)
+      else if (strcmp(argv[i], "-h") == 0 ||
+               strcmp(argv[i], "--help") == 0)
       {
         m_bShowHelp = true;
       }
-      else if(strcmp(argv[i], "-s") == 0 ||
-          strcmp(argv[i], "--start") == 0)
+      else if (strcmp(argv[i], "-s") == 0 ||
+               strcmp(argv[i], "--start") == 0)
       {
         m_bStart = true;
       }
-      else if(strcmp(argv[i], "-ncc") == 0 ||
-          strcmp(argv[i], "--no-config-confirm") == 0)
+      else if (strcmp(argv[i], "-ncc") == 0 ||
+               strcmp(argv[i], "--no-config-confirm") == 0)
       {
         m_bNoConfigConfirm = true;
       }
-      else if(strcmp(argv[i], "-mvi") == 0 ||
-          strcmp(argv[i], "--move-infected") == 0)
+      else if (strcmp(argv[i], "-npi") == 0 ||
+               strcmp(argv[i], "--no-print-ignored") == 0)
+      {
+        m_bNoPrintIgnored = true;
+      }
+      else if (strcmp(argv[i], "-mvi") == 0 ||
+               strcmp(argv[i], "--move-infected") == 0)
       {
         m_bHasArgMoveInfected = true;
         m_bArgMoveInfected = true;
       }
-      else if(strcmp(argv[i], "-nmvi") == 0 ||
-          strcmp(argv[i], "--no-move-infected") == 0)
+      else if (strcmp(argv[i], "-nmvi") == 0 ||
+               strcmp(argv[i], "--no-move-infected") == 0)
       {
         m_bHasArgMoveInfected = true;
         m_bArgMoveInfected = false;
       }
-      else if(strcmp(argv[i], "-mv") == 0 ||
-          strcmp(argv[i], "--moveto") == 0)
+      else if (strcmp(argv[i], "-mv") == 0 ||
+               strcmp(argv[i], "--moveto") == 0)
       {
-        if(++i < argc)
+        if (++i < argc)
           m_sMoveToPath = argv[i];
-        else
-        {
+        else {
           cerr << "Option -mv|--moveto must be followed by a valid path.\nAborting search.\n";
           return false;
         }
       }
-      else if(strcmp(argv[i], "--move-create-dirtree") == 0)
-      {
+      else if (strcmp(argv[i], "--move-create-dirtree") == 0) {
         m_bMoveCreateTree = true;
       }
 

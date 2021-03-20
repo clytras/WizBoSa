@@ -21,6 +21,7 @@ namespace wizbosa
     vector<string>& GetFilesFilter() { return m_vFilesFilter; }
     vector<string>& GetKeywords() { return m_vKeywords; }
     unsigned long long GetIgnoreFilesOver() { return m_ullIgnoreFilesOver; }
+    bool GetPrintIgnoredFiles() { return m_bPrintIgnoredFiles; }
 
     bool GetSendAlert() { return m_bAlert; }
     const string& GetAlertMailTo() const { return m_sAlertMailTo; }
@@ -43,6 +44,7 @@ namespace wizbosa
     string m_sAlertMailFrom;
     string m_sAlertMailSubject;
     unsigned long long m_ullIgnoreFilesOver;
+    bool m_bPrintIgnoredFiles;
     bool m_bMoveInfected;
     bool m_bMoveCreateTree;
     string m_sMoveToPath;
